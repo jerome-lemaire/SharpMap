@@ -202,6 +202,10 @@
     <Compile Include="WMSServer.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\OR2SPolygones\OR2SPolygones.csproj">
+      <Project>{6F1A0419-50F8-46A3-AAFF-A37D402DCA0E}</Project>
+      <Name>OR2SPolygones</Name>
+    </ProjectReference>
     <ProjectReference Include="..\SharpMap.Web\SharpMap.Web.csproj">
       <Project>{292EF671-4063-4952-8DE0-423DF72A0950}</Project>
       <Name>SharpMap.Web</Name>

@@ -12,6 +12,10 @@ using System.Xml.Serialization;
 using NetTopologySuite;
 using ProjNet.CoordinateSystems;
 using ProjNet.CoordinateSystems.Transformations;
+using or2s.Decodage;
+using GeoAPI.Geometries;
+using NetTopologySuite.IO;
+using NetTopologySuite.Geometries;
 
 namespace SharpMapServer
 {
@@ -49,7 +53,8 @@ namespace SharpMapServer
 
                 /*add default layer*/
                 ctx.Layers = new List<SharpMapServer.Model.WmsLayer>();
-                ctx.Layers.Add(new SharpMapServer.Model.WmsLayer() { Name = "States", Description = "Demo data over US States", Provider = "Shapefile", DataSource = "states.shp" });                
+                ctx.Layers.Add(new SharpMapServer.Model.WmsLayer() { Name = "States", Description = "Demo data over US States", Provider = "Shapefile", DataSource = "states.shp" });     
+                
                 FileStream fs = File.Create(settingsfile);
                 serializer.Serialize(fs, ctx);
                 fs.Close();
@@ -75,16 +80,35 @@ namespace SharpMapServer
             WMSServer.m_Map = new SharpMap.Map();
             foreach (var l in settings.Layers)
             {
+                string ds = l.DataSource;
+                if (!Path.IsPathRooted(ds))
+                    ds = Server.MapPath(ds);
+
+                VectorLayer lay = new VectorLayer(l.Name);
+
                 switch (l.Provider)
                 {
                     case "Shapefile":
-                        VectorLayer lay = new VectorLayer(l.Name);
-                        string ds = l.DataSource;
-                        if (!Path.IsPathRooted(ds))
-                            ds = Server.MapPath(ds);
-
                         lay.DataSource = new SharpMap.Data.Providers.ShapeFile(ds);
                         lay.SRID = 4326;
+                        WMSServer.m_Map.Layers.Add(lay);
+                        break;
+                    case "OR2S":
+                        using (System.Net.WebClient webClient = new System.Net.WebClient())
+                        {
+                            Transmission_polygone plg = new Transmission_polygone();
+                            List<byte[]> polyBytes = plg.Extraire_byte_from_polygone(webClient.OpenRead(new Uri("https://calcul2.or2s.fr/requestMaps/api/polygones/" + l.DataSource)));
+                            CconstructeurDepuisBdd polyOr2s = new CconstructeurDepuisBdd(polyBytes, l.Name);
+                            lay.DataSource = new SharpMap.Data.Providers.GeometryProvider(processPolygonsOR2S(polyOr2s.tab_polygones_geo));
+                            WMSServer.m_Map.Layers.Add(lay);
+                        }
+                        break;
+                    case "geolocalisationOR2S":
+                        GeometryFactory gf = new GeometryFactory();
+                        List<IGeometry> pts = new List<IGeometry>();
+                        pts.Add(gf.CreatePoint(new GeoAPI.Geometries.Coordinate(2.295753, 49.894067)));
+                        pts.Add(gf.CreatePoint(new GeoAPI.Geometries.Coordinate(2.244, 49.87)));
+                        lay.DataSource = new SharpMap.Data.Providers.GeometryProvider(pts);
                         WMSServer.m_Map.Layers.Add(lay);
                         break;
                 }
@@ -119,6 +143,31 @@ namespace SharpMapServer
         protected void Application_End(object sender, EventArgs e)
         {
 
+        }
+
+        private List<IPolygon> processPolygonsOR2S(CpolygonesGeo[] polygons)
+        {
+            GeometryFactory gf = new GeometryFactory();
+            List<IPolygon> res = new List<IPolygon>();
+            foreach (CpolygonesGeo multipoly in polygons)
+            {
+                List<IPolygon> innerPoly = new List<IPolygon>();
+                foreach (CpolygoneGeo polygone in multipoly.polyGeo)
+                {
+                    Coordinate[] coords = polygone.Coordonnee_polygone.Select(pt => new Coordinate(pt.lat, pt.lng)).ToArray();
+                    innerPoly.Add(gf.CreatePolygon(coords));
+                }
+                
+                if (innerPoly.Count > 1)
+                {
+                    // Gestion des trous
+                    ILinearRing shell = gf.CreateLinearRing(innerPoly.First().Coordinates);
+                    ILinearRing[] holes = innerPoly.Skip(1).Select(p => gf.CreateLinearRing(p.Coordinates)).ToArray();
+                    res.Add(gf.CreatePolygon(shell, holes));
+                }
+                else if (innerPoly.Count > 0) res.Add(innerPoly.First());
+            }
+            return res;
         }
     }
 }

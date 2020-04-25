@@ -9,19 +9,31 @@
   </Users>
   <Layers>
     <WmsLayer>
-      <Name>States</Name>
+      <Name>States (SHP)</Name>
       <Description>Demo data over US States</Description>
       <DataSource>states.shp</DataSource>
       <Provider>Shapefile</Provider>
     </WmsLayer>
+    <WmsLayer>
+      <Name>EPCI (OR2S)</Name>
+      <Description>EPCI 2018</Description>
+      <DataSource>EPCI_France_janv2018</DataSource>
+      <Provider>OR2S</Provider>
+    </WmsLayer>
+	<WmsLayer>
+      <Name>Pts (OR2S)</Name>
+      <Description></Description>
+      <DataSource></DataSource>
+      <Provider>geolocalisationOR2S</Provider>
+    </WmsLayer>
   </Layers>
   <Capabilities>
     <ID>0</ID>
-    <Abstract>This is an example SharpMap server</Abstract>
+    <Abstract>Serveur WMS OR2S</Abstract>
     <LayerLimit>0</LayerLimit>
     <MaxWidth>0</MaxWidth>
     <MaxHeight>0</MaxHeight>
-    <Title>SharpMap Demo Server</Title>
+    <Title>Serveur WMS OR2S</Title>
     <Keywords>SharpMap,WMS</Keywords>
   </Capabilities>
 </SharpMapContext>
